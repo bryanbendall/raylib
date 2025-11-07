@@ -2044,9 +2044,9 @@ static void ConfigureEvdevDevice(char *device)
     }
 
     const char *deviceKindStr = "unknown";
-    if (isMouse || isTouch)
+    if (isTouch)
     {
-        deviceKindStr = "mouse";
+        deviceKindStr = "touch";
         if (platform.mouseFd != -1) close(platform.mouseFd);
         platform.mouseFd = fd;
 
@@ -2058,9 +2058,10 @@ static void ConfigureEvdevDevice(char *device)
             platform.absRange.y = absinfo[ABS_Y].info.minimum;
             platform.absRange.height = absinfo[ABS_Y].info.maximum - absinfo[ABS_Y].info.minimum;
         }
-    }
-    else if (isGamepad && !isMouse && !isKeyboard && (platform.gamepadCount < MAX_GAMEPADS))
-    {
+    } else if (isMouse) {
+        // We only care about touch screen
+        deviceKindStr = "mouse - skipping";
+    } else if (isGamepad && !isMouse && !isKeyboard && (platform.gamepadCount < MAX_GAMEPADS)) {
         deviceKindStr = "gamepad";
         int index = platform.gamepadCount++;
 
@@ -2093,14 +2094,10 @@ static void ConfigureEvdevDevice(char *device)
                 }
             }
         }
-    }
-    else if (isKeyboard && (platform.keyboardFd == -1))
-    {
+    } else if (isKeyboard && (platform.keyboardFd == -1)) {
         deviceKindStr = "keyboard";
         platform.keyboardFd = fd;
-    }
-    else
-    {
+    } else {
         close(fd);
         return;
     }
@@ -2274,16 +2271,16 @@ static void PollMouseEvents(void)
             // Basic movement
             if (event.code == ABS_X)
             {
-                CORE.Input.Mouse.currentPosition.x = (event.value - platform.absRange.x)*CORE.Window.screen.width/platform.absRange.width;    // Scale according to absRange
-                CORE.Input.Touch.position[0].x = (event.value - platform.absRange.x)*CORE.Window.screen.width/platform.absRange.width;        // Scale according to absRange
+                CORE.Input.Mouse.currentPosition.x = event.value;
+                CORE.Input.Touch.position[0].x = event.value;
 
                 touchAction = 2;    // TOUCH_ACTION_MOVE
             }
 
             if (event.code == ABS_Y)
             {
-                CORE.Input.Mouse.currentPosition.y = (event.value - platform.absRange.y)*CORE.Window.screen.height/platform.absRange.height;  // Scale according to absRange
-                CORE.Input.Touch.position[0].y = (event.value - platform.absRange.y)*CORE.Window.screen.height/platform.absRange.height;      // Scale according to absRange
+                CORE.Input.Mouse.currentPosition.y = event.value;
+                CORE.Input.Touch.position[0].y = event.value;
 
                 touchAction = 2;    // TOUCH_ACTION_MOVE
             }
@@ -2293,12 +2290,12 @@ static void PollMouseEvents(void)
 
             if (event.code == ABS_MT_POSITION_X)
             {
-                if (platform.touchSlot < MAX_TOUCH_POINTS) CORE.Input.Touch.position[platform.touchSlot].x = (event.value - platform.absRange.x)*CORE.Window.screen.width/platform.absRange.width;    // Scale according to absRange
+                if (platform.touchSlot < MAX_TOUCH_POINTS) CORE.Input.Touch.position[platform.touchSlot].x = event.value;
             }
 
             if (event.code == ABS_MT_POSITION_Y)
             {
-                if (platform.touchSlot < MAX_TOUCH_POINTS) CORE.Input.Touch.position[platform.touchSlot].y = (event.value - platform.absRange.y)*CORE.Window.screen.height/platform.absRange.height;  // Scale according to absRange
+                if (platform.touchSlot < MAX_TOUCH_POINTS) CORE.Input.Touch.position[platform.touchSlot].y = event.value;
             }
 
             if (event.code == ABS_MT_TRACKING_ID)
