@@ -371,46 +371,46 @@ void SetWindowMaxSize(int width, int height)
 // Set window dimensions
 void SetWindowSize(int width, int height)
 {
-    TRACELOG(LOG_WARNING, "SetWindowSize() not available on target platform");
+    // TRACELOG(LOG_WARNING, "SetWindowSize() not available on target platform");
 }
 
 // Set window opacity, value opacity is between 0.0 and 1.0
 void SetWindowOpacity(float opacity)
 {
-    TRACELOG(LOG_WARNING, "SetWindowOpacity() not available on target platform");
+    // TRACELOG(LOG_WARNING, "SetWindowOpacity() not available on target platform");
 }
 
 // Set window focused
 void SetWindowFocused(void)
 {
-    TRACELOG(LOG_WARNING, "SetWindowFocused() not available on target platform");
+    // TRACELOG(LOG_WARNING, "SetWindowFocused() not available on target platform");
 }
 
 // Get native window handle
 void *GetWindowHandle(void)
 {
-    TRACELOG(LOG_WARNING, "GetWindowHandle() not implemented on target platform");
+    // TRACELOG(LOG_WARNING, "GetWindowHandle() not implemented on target platform");
     return NULL;
 }
 
 // Get number of monitors
 int GetMonitorCount(void)
 {
-    TRACELOG(LOG_WARNING, "GetMonitorCount() not implemented on target platform");
+    // TRACELOG(LOG_WARNING, "GetMonitorCount() not implemented on target platform");
     return 1;
 }
 
 // Get current monitor where window is placed
 int GetCurrentMonitor(void)
 {
-    TRACELOG(LOG_WARNING, "GetCurrentMonitor() not implemented on target platform");
+    // TRACELOG(LOG_WARNING, "GetCurrentMonitor() not implemented on target platform");
     return 0;
 }
 
 // Get selected monitor position
 Vector2 GetMonitorPosition(int monitor)
 {
-    TRACELOG(LOG_WARNING, "GetMonitorPosition() not implemented on target platform");
+    // TRACELOG(LOG_WARNING, "GetMonitorPosition() not implemented on target platform");
     return (Vector2){ 0, 0 };
 }
 
@@ -1114,7 +1114,7 @@ void PollInputEvents(void)
     for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
 
     // Reset touch positions to invalid state
-    for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.position[i] = (Vector2){ -1, -1 };
+    // for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.position[i] = (Vector2){ -1, -1 };
 
     // Map touch position to mouse position for convenience
     // NOTE: For DRM touchscreen devices, this mapping is disabled to avoid false touch detection
