@@ -633,6 +633,7 @@ RLAPI void rlVertex2f(float x, float y);                // Define one vertex (po
 RLAPI void rlVertex3f(float x, float y, float z);       // Define one vertex (position) - 3 float
 RLAPI void rlTexCoord2f(float x, float y);              // Define one vertex (texture coordinate) - 2 float
 RLAPI void rlNormal3f(float x, float y, float z);       // Define one vertex (normal) - 3 float
+RLAPI void rlNormal3fNotNormalized(float x, float y, float z);       // Define one vertex (normal) - 3 float
 RLAPI void rlColor4ub(unsigned char r, unsigned char g, unsigned char b, unsigned char a); // Define one vertex (color) - 4 byte
 RLAPI void rlColor3f(float x, float y, float z);        // Define one vertex (color) - 3 float
 RLAPI void rlColor4f(float x, float y, float z, float w); // Define one vertex (color) - 4 float
@@ -1629,6 +1630,15 @@ void rlNormal3f(float x, float y, float z)
     RLGL.State.normalx = normalx;
     RLGL.State.normaly = normaly;
     RLGL.State.normalz = normalz;
+}
+
+// Define one vertex (normal)
+// NOTE: Set directly do not normalize
+void rlNormal3fNotNormalized(float x, float y, float z)
+{
+    RLGL.State.normalx = x;
+    RLGL.State.normaly = y;
+    RLGL.State.normalz = z;
 }
 
 // Define one vertex (color)
