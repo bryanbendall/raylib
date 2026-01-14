@@ -365,6 +365,12 @@
 #ifndef RL_DEFAULT_SHADER_ATTRIB_LOCATION_INSTANCE_TX
     #define RL_DEFAULT_SHADER_ATTRIB_LOCATION_INSTANCE_TX 9
 #endif
+#ifndef RL_DEFAULT_SHADER_ATTRIB_LOCATION_SDF_SHAPE
+    #define RL_DEFAULT_SHADER_ATTRIB_LOCATION_SDF_SHAPE   10
+#endif
+#ifndef RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA
+    #define RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA   11
+#endif
 
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
@@ -401,8 +407,10 @@ typedef struct rlVertexBuffer {
 #if defined(GRAPHICS_API_OPENGL_ES2)
     unsigned short *indices;    // Vertex indices (in case vertex data comes indexed) (6 indices per quad)
 #endif
+    unsigned int *sdfShapes;    // Vertex sdf shape (1 components per vertex) (shader-location = 10)
+    float* userData;            // Vertex user data (4 float per vertex) (shader-location = 11)
     unsigned int vaoId;         // OpenGL Vertex Array Object id
-    unsigned int vboId[5];      // OpenGL Vertex Buffer Objects id (5 types of vertex data)
+    unsigned int vboId[7];      // OpenGL Vertex Buffer Objects id
 } rlVertexBuffer;
 
 // Draw call type
@@ -536,7 +544,10 @@ typedef enum {
     RL_SHADER_LOC_MAP_CUBEMAP,          // Shader location: samplerCube texture: cubemap
     RL_SHADER_LOC_MAP_IRRADIANCE,       // Shader location: samplerCube texture: irradiance
     RL_SHADER_LOC_MAP_PREFILTER,        // Shader location: samplerCube texture: prefilter
-    RL_SHADER_LOC_MAP_BRDF              // Shader location: sampler2d texture: brdf
+    RL_SHADER_LOC_MAP_BRDF,              // Shader location: sampler2d texture: brdf
+    // Custom
+    RL_SHADER_LOC_SDF_SHAPE,
+    RL_SHADER_LOC_USER_DATA
 } rlShaderLocationIndex;
 
 #define RL_SHADER_LOC_MAP_DIFFUSE       RL_SHADER_LOC_MAP_ALBEDO
@@ -633,7 +644,8 @@ RLAPI void rlVertex2f(float x, float y);                // Define one vertex (po
 RLAPI void rlVertex3f(float x, float y, float z);       // Define one vertex (position) - 3 float
 RLAPI void rlTexCoord2f(float x, float y);              // Define one vertex (texture coordinate) - 2 float
 RLAPI void rlNormal3f(float x, float y, float z);       // Define one vertex (normal) - 3 float
-RLAPI void rlNormal3fNotNormalized(float x, float y, float z);       // Define one vertex (normal) - 3 float
+RLAPI void rlSdfShape(unsigned int shape);
+RLAPI void rlUserData(float value0, float value1, float value2, float value3);
 RLAPI void rlColor4ub(unsigned char r, unsigned char g, unsigned char b, unsigned char a); // Define one vertex (color) - 4 byte
 RLAPI void rlColor3f(float x, float y, float z);        // Define one vertex (color) - 3 float
 RLAPI void rlColor4f(float x, float y, float z, float w); // Define one vertex (color) - 4 float
@@ -1059,6 +1071,13 @@ RLAPI void rlLoadDrawQuad(void);     // Load and draw a quad
 #ifndef RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE2
     #define RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE2  "texture2"          // texture2 (texture slot active 2)
 #endif
+#ifndef RL_DEFAULT_SHADER_ATTRIB_NAME_SDF_SHAPE
+    #define RL_DEFAULT_SHADER_ATTRIB_NAME_SDF_SHAPE    "sdfShape"          // Bound by default to shader location: RL_DEFAULT_SHADER_ATTRIB_NAME_SDF_SHAPE
+#endif
+#ifndef RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA
+    #define RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA    "userData"          // Bound by default to shader location: RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA
+#endif
+
 
 //----------------------------------------------------------------------------------
 // Module Types and Structures Definition
@@ -1078,6 +1097,8 @@ typedef struct rlglData {
         float texcoordx, texcoordy;         // Current active texture coordinate (added on glVertex*())
         float normalx, normaly, normalz;    // Current active normal (added on glVertex*())
         unsigned char colorr, colorg, colorb, colora;   // Current active color (added on glVertex*())
+        unsigned int sdfShape;
+        float userData0, userData1, userData2, userData3;
 
         int currentMatrixMode;              // Current matrix mode
         Matrix *currentMatrix;              // Current matrix pointer
@@ -1582,6 +1603,15 @@ void rlVertex3f(float x, float y, float z)
     RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].colors[4*RLGL.State.vertexCounter + 2] = RLGL.State.colorb;
     RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].colors[4*RLGL.State.vertexCounter + 3] = RLGL.State.colora;
 
+    // Add current sdf shape
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].sdfShapes[RLGL.State.vertexCounter] = RLGL.State.sdfShape;
+
+    // Add current sdf shape
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData[4*RLGL.State.vertexCounter] = RLGL.State.userData0;
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData[4*RLGL.State.vertexCounter + 1] = RLGL.State.userData1;
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData[4*RLGL.State.vertexCounter + 2] = RLGL.State.userData2;
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData[4*RLGL.State.vertexCounter + 3] = RLGL.State.userData3;
+
     RLGL.State.vertexCounter++;
     RLGL.currentBatch->draws[RLGL.currentBatch->drawCounter - 1].vertexCount++;
 }
@@ -1632,13 +1662,17 @@ void rlNormal3f(float x, float y, float z)
     RLGL.State.normalz = normalz;
 }
 
-// Define one vertex (normal)
-// NOTE: Set directly do not normalize
-void rlNormal3fNotNormalized(float x, float y, float z)
+void rlSdfShape(unsigned int shape)
 {
-    RLGL.State.normalx = x;
-    RLGL.State.normaly = y;
-    RLGL.State.normalz = z;
+    RLGL.State.sdfShape = shape;
+}
+
+void rlUserData(float value0, float value1, float value2, float value3)
+{
+    RLGL.State.userData0 = value0;
+    RLGL.State.userData1 = value1;
+    RLGL.State.userData2 = value2;
+    RLGL.State.userData3 = value3;
 }
 
 // Define one vertex (color)
@@ -2326,8 +2360,16 @@ void rlglInit(int width, int height)
     // Init default vertex arrays buffers
     // Simulate that the default shader has the location RL_SHADER_LOC_VERTEX_NORMAL to bind the normal buffer for the default render batch
     RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_NORMAL] = RL_DEFAULT_SHADER_ATTRIB_LOCATION_NORMAL;
+    // Simulate attributes
+    RLGL.State.currentShaderLocs[RL_SHADER_LOC_SDF_SHAPE] = RL_DEFAULT_SHADER_ATTRIB_LOCATION_SDF_SHAPE;
+    RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA] = RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA;
+
     RLGL.defaultBatch = rlLoadRenderBatch(RL_DEFAULT_BATCH_BUFFERS, RL_DEFAULT_BATCH_BUFFER_ELEMENTS);
+
     RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_NORMAL] = -1;
+    RLGL.State.currentShaderLocs[RL_SHADER_LOC_SDF_SHAPE] = -1;
+    RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA] = -1;
+    
     RLGL.currentBatch = &RLGL.defaultBatch;
 
     // Init stack matrices (emulating OpenGL 1.1)
@@ -2829,11 +2871,15 @@ rlRenderBatch rlLoadRenderBatch(int numBuffers, int bufferElements)
 #if defined(GRAPHICS_API_OPENGL_ES2)
         batch.vertexBuffer[i].indices = (unsigned short *)RL_CALLOC(bufferElements*6, sizeof(unsigned short));  // 6 int by quad (indices)
 #endif
+        batch.vertexBuffer[i].sdfShapes = (unsigned int *)RL_CALLOC(bufferElements*4, sizeof(unsigned int));     // 1 unsigned int by vertex, 4 vertex by quad
+        batch.vertexBuffer[i].userData = (float *)RL_CALLOC(bufferElements*4*4, sizeof(float));   // 4 float by vertex, 4 floats by quad
 
         for (int j = 0; j < (3*4*bufferElements); j++) batch.vertexBuffer[i].vertices[j] = 0.0f;
         for (int j = 0; j < (2*4*bufferElements); j++) batch.vertexBuffer[i].texcoords[j] = 0.0f;
         for (int j = 0; j < (3*4*bufferElements); j++) batch.vertexBuffer[i].normals[j] = 0.0f;
         for (int j = 0; j < (4*4*bufferElements); j++) batch.vertexBuffer[i].colors[j] = 0;
+        for (int j = 0; j < (4*bufferElements); j++) batch.vertexBuffer[i].sdfShapes[j] = 0;
+        for (int j = 0; j < (4*4*bufferElements); j++) batch.vertexBuffer[i].userData[j] = 0;
 
         int k = 0;
 
@@ -2905,6 +2951,20 @@ rlRenderBatch rlLoadRenderBatch(int numBuffers, int bufferElements)
 #if defined(GRAPHICS_API_OPENGL_ES2)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, bufferElements*6*sizeof(short), batch.vertexBuffer[i].indices, GL_STATIC_DRAW);
 #endif
+
+        // Sdf shape buffer (shader-location = 10)
+        glGenBuffers(1, &batch.vertexBuffer[i].vboId[5]);
+        glBindBuffer(GL_ARRAY_BUFFER, batch.vertexBuffer[i].vboId[5]);
+        glBufferData(GL_ARRAY_BUFFER, bufferElements * 4 * sizeof(unsigned int), batch.vertexBuffer[i].sdfShapes, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_SDF_SHAPE]);
+        glVertexAttribIPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_SDF_SHAPE], 1, GL_UNSIGNED_INT, 0, 0);
+
+        // User Data buffer (shader-location = 11)
+        glGenBuffers(1, &batch.vertexBuffer[i].vboId[6]);
+        glBindBuffer(GL_ARRAY_BUFFER, batch.vertexBuffer[i].vboId[6]);
+        glBufferData(GL_ARRAY_BUFFER, bufferElements*4*4*sizeof(float), batch.vertexBuffer[i].userData, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA]);
+        glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA], 4, GL_FLOAT, 0, 0, 0);
     }
 
     TRACELOG(RL_LOG_INFO, "RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)");
@@ -2957,6 +3017,8 @@ void rlUnloadRenderBatch(rlRenderBatch batch)
             glDisableVertexAttribArray(RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD);
             glDisableVertexAttribArray(RL_DEFAULT_SHADER_ATTRIB_LOCATION_NORMAL);
             glDisableVertexAttribArray(RL_DEFAULT_SHADER_ATTRIB_LOCATION_COLOR);
+            glDisableVertexAttribArray(RL_DEFAULT_SHADER_ATTRIB_LOCATION_SDF_SHAPE);
+            glDisableVertexAttribArray(RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA);
             glBindVertexArray(0);
         }
 
@@ -2966,6 +3028,8 @@ void rlUnloadRenderBatch(rlRenderBatch batch)
         glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[2]);
         glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[3]);
         glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[4]);
+        glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[5]);
+        glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[6]);
 
         // Delete VAOs from GPU (VRAM)
         if (RLGL.ExtSupported.vao) glDeleteVertexArrays(1, &batch.vertexBuffer[i].vaoId);
@@ -2976,6 +3040,8 @@ void rlUnloadRenderBatch(rlRenderBatch batch)
         RL_FREE(batch.vertexBuffer[i].normals);
         RL_FREE(batch.vertexBuffer[i].colors);
         RL_FREE(batch.vertexBuffer[i].indices);
+        RL_FREE(batch.vertexBuffer[i].sdfShapes);
+        RL_FREE(batch.vertexBuffer[i].userData);
     }
 
     // Unload arrays
@@ -3017,6 +3083,14 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
         glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[3]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, RLGL.State.vertexCounter*4*sizeof(unsigned char), batch->vertexBuffer[batch->currentBuffer].colors);
         //glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*4*batch->vertexBuffer[batch->currentBuffer].elementCount, batch->vertexBuffer[batch->currentBuffer].colors, GL_DYNAMIC_DRAW);    // Update all buffer
+
+        // Sdf shape buffer
+        glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[5]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, RLGL.State.vertexCounter * sizeof(unsigned int), batch->vertexBuffer[batch->currentBuffer].sdfShapes);
+
+        // User Data buffer
+        glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[6]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, RLGL.State.vertexCounter*4*sizeof(float), batch->vertexBuffer[batch->currentBuffer].userData);
 
         // NOTE: glMapBuffer() causes sync issue
         // If GPU is working with this buffer, glMapBuffer() will wait(stall) until GPU to finish its job
@@ -3114,6 +3188,16 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
                 glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[3]);
                 glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_COLOR], 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, 0);
                 glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_COLOR]);
+
+                // Bind vertex attrib: sdf shape (shader-location = 10)
+                glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[5]);
+                glVertexAttribIPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_SDF_SHAPE], 1, GL_UNSIGNED_INT, 0, 0);
+                glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_SDF_SHAPE]);
+
+                // Bind vertex attrib: user data (shader-location = 11)
+                glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[6]);
+                glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA], 4, GL_FLOAT, 0, 0, 0);
+                glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA]);
 
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[4]);
             }
@@ -4330,6 +4414,8 @@ unsigned int rlLoadShaderProgram(unsigned int vShaderId, unsigned int fShaderId)
     glBindAttribLocation(programId, RL_DEFAULT_SHADER_ATTRIB_LOCATION_TANGENT, RL_DEFAULT_SHADER_ATTRIB_NAME_TANGENT);
     glBindAttribLocation(programId, RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD2, RL_DEFAULT_SHADER_ATTRIB_NAME_TEXCOORD2);
     glBindAttribLocation(programId, RL_DEFAULT_SHADER_ATTRIB_LOCATION_INSTANCE_TX, RL_DEFAULT_SHADER_ATTRIB_NAME_INSTANCE_TX);
+    glBindAttribLocation(programId, RL_DEFAULT_SHADER_ATTRIB_LOCATION_SDF_SHAPE, RL_DEFAULT_SHADER_ATTRIB_NAME_SDF_SHAPE);
+    glBindAttribLocation(programId, RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA, RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA);
 
 #ifdef RL_SUPPORT_MESH_GPU_SKINNING
     glBindAttribLocation(programId, RL_DEFAULT_SHADER_ATTRIB_LOCATION_BONEIDS, RL_DEFAULT_SHADER_ATTRIB_NAME_BONEIDS);
