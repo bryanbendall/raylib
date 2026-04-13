@@ -1219,6 +1219,9 @@ RLAPI void SetMouseScale(float scaleX, float scaleY);         // Set mouse scali
 RLAPI float GetMouseWheelMove(void);                          // Get mouse wheel movement for X or Y, whichever is larger
 RLAPI Vector2 GetMouseWheelMoveV(void);                       // Get mouse wheel movement for both X and Y
 RLAPI void SetMouseCursor(int cursor);                        // Set mouse cursor
+RLAPI void SetMouseSwapXY(bool state);
+RLAPI void SetMouseInvertX(bool state);
+RLAPI void SetMouseInvertY(bool state);
 
 // Input-related functions: touch
 RLAPI int GetTouchX(void);                                    // Get touch position X for touch point 0 (relative to screen size)
@@ -1226,6 +1229,9 @@ RLAPI int GetTouchY(void);                                    // Get touch posit
 RLAPI Vector2 GetTouchPosition(int index);                    // Get touch position XY for a touch point index (relative to screen size)
 RLAPI int GetTouchPointId(int index);                         // Get touch point identifier for given index
 RLAPI int GetTouchPointCount(void);                           // Get number of touch points
+RLAPI void SetTouchSwapXY(bool state);
+RLAPI void SetTouchInvertX(bool state);
+RLAPI void SetTouchInvertY(bool state);
 
 //------------------------------------------------------------------------------------
 // Gestures and Touch Handling Functions (Module: rgestures)

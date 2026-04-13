@@ -353,6 +353,10 @@ typedef struct CoreData {
             Vector2 currentWheelMove;       // Registers current mouse wheel variation
             Vector2 previousWheelMove;      // Registers previous mouse wheel variation
 
+            bool swapXY;
+            bool invertX;
+            bool invertY;
+
         } Mouse;
         struct {
             int pointCount;                             // Number of touch points active
@@ -360,6 +364,10 @@ typedef struct CoreData {
             Vector2 position[MAX_TOUCH_POINTS];         // Touch position on screen
             char currentTouchState[MAX_TOUCH_POINTS];   // Registers current touch state
             char previousTouchState[MAX_TOUCH_POINTS];  // Registers previous touch state
+
+            bool swapXY;
+            bool invertX;
+            bool invertY;
 
         } Touch;
         struct {
@@ -3721,18 +3729,42 @@ bool IsMouseButtonUp(int button)
     return up;
 }
 
+int GetMouseXInternal(void)
+{
+    int mouseX = (int)((CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x) * CORE.Input.Mouse.scale.x);
+
+    if (CORE.Input.Mouse.invertX)
+        mouseX = CORE.Window.screen.width - mouseX;
+
+    return mouseX;
+}
+
+int GetMouseYInternal(void)
+{
+    int mouseY = (int)((CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y) * CORE.Input.Mouse.scale.y);
+
+    if (CORE.Input.Mouse.invertY)
+        mouseY = CORE.Window.screen.height - mouseY;
+
+    return mouseY;
+}
+
 // Get mouse position X
 int GetMouseX(void)
 {
-    int mouseX = (int)((CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x)*CORE.Input.Mouse.scale.x);
-    return mouseX;
+    if (CORE.Input.Mouse.swapXY)
+        return GetMouseYInternal();
+    else
+        return GetMouseXInternal();
 }
 
 // Get mouse position Y
 int GetMouseY(void)
 {
-    int mouseY = (int)((CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y)*CORE.Input.Mouse.scale.y);
-    return mouseY;
+    if(CORE.Input.Mouse.swapXY)
+        return GetMouseXInternal();
+    else
+        return GetMouseYInternal();
 }
 
 // Get mouse position XY
@@ -3740,8 +3772,8 @@ Vector2 GetMousePosition(void)
 {
     Vector2 position = { 0 };
 
-    position.x = (CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x)*CORE.Input.Mouse.scale.x;
-    position.y = (CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y)*CORE.Input.Mouse.scale.y;
+    position.x = GetMouseX();
+    position.y = GetMouseY();
 
     return position;
 }
@@ -3792,22 +3824,61 @@ Vector2 GetMouseWheelMoveV(void)
     return result;
 }
 
+void SetMouseSwapXY(bool state)
+{
+    CORE.Input.Mouse.swapXY = state;
+}
+
+void SetMouseInvertX(bool state)
+{
+    CORE.Input.Mouse.invertX = state;
+}
+
+void SetMouseInvertY(bool state)
+{
+    CORE.Input.Mouse.invertY = state;
+}
+
 //----------------------------------------------------------------------------------
 // Module Functions Definition: Input Handling: Touch
 //----------------------------------------------------------------------------------
 
+int GetTouchXInternal(int index)
+{
+    int touchX = (int)CORE.Input.Touch.position[index].x;
+
+    if (CORE.Input.Touch.invertX)
+        touchX = CORE.Window.screen.width - touchX;
+
+    return touchX;
+}
+
+int GetTouchYInternal(int index)
+{
+    int touchY = (int)CORE.Input.Touch.position[index].y;
+
+    if (CORE.Input.Touch.invertY)
+        touchY = CORE.Window.screen.height - touchY;
+
+    return touchY;
+}
+
 // Get touch position X for touch point 0 (relative to screen size)
 int GetTouchX(void)
 {
-    int touchX = (int)CORE.Input.Touch.position[0].x;
-    return touchX;
+    if (CORE.Input.Touch.swapXY)
+        return GetTouchYInternal(0);
+    else
+        return GetTouchXInternal(0);
 }
 
 // Get touch position Y for touch point 0 (relative to screen size)
 int GetTouchY(void)
 {
-    int touchY = (int)CORE.Input.Touch.position[0].y;
-    return touchY;
+    if (CORE.Input.Touch.swapXY)
+        return GetTouchXInternal(0);
+    else
+        return GetTouchYInternal(0);
 }
 
 // Get touch position XY for a touch point index (relative to screen size)
@@ -3816,7 +3887,15 @@ Vector2 GetTouchPosition(int index)
 {
     Vector2 position = { -1.0f, -1.0f };
 
-    if (index < MAX_TOUCH_POINTS) position = CORE.Input.Touch.position[index];
+    if (index < MAX_TOUCH_POINTS){
+        if(CORE.Input.Touch.swapXY){
+            position.x = GetTouchYInternal(index);
+            position.y = GetTouchXInternal(index);
+        } else {
+            position.x = GetTouchXInternal(index);
+            position.y = GetTouchYInternal(index);
+        }
+    } 
     else TRACELOG(LOG_WARNING, "INPUT: Required touch point out of range (Max touch points: %i)", MAX_TOUCH_POINTS);
 
     return position;
@@ -3836,6 +3915,21 @@ int GetTouchPointId(int index)
 int GetTouchPointCount(void)
 {
     return CORE.Input.Touch.pointCount;
+}
+
+void SetTouchSwapXY(bool state)
+{
+    CORE.Input.Touch.swapXY = state;
+}
+
+void SetTouchInvertX(bool state)
+{
+    CORE.Input.Touch.invertX = state;
+}
+
+void SetTouchInvertY(bool state)
+{
+    CORE.Input.Touch.invertY = state;
 }
 
 //----------------------------------------------------------------------------------
