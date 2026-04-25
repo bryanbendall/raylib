@@ -9,10 +9,10 @@
      - struct AliasInfo
      - struct EnumInfo
      - struct FunctionInfo
-     
+
     WARNING: This parser is specifically designed to work with raylib.h, and has some contraints
     in that regards. Still, it can also work with other header files that follow same file structure
-    conventions as raylib.h: rlgl.h, raymath.h, raygui.h, reasings.h 
+    conventions as raylib.h: rlgl.h, raymath.h, raygui.h, reasings.h
 
     CONSTRAINTS:
     This parser is specifically designed to work with raylib.h, so, it has some constraints:
@@ -52,7 +52,7 @@
     raylib-parser is licensed under an unmodified zlib/libpng license, which is an OSI-certified,
     BSD-like license that allows static linking with closed source software:
 
-    Copyright (c) 2021-2025 Ramon Santamaria (@raysan5)
+    Copyright (c) 2021-2026 Ramon Santamaria (@raysan5)
 
 **********************************************************************************************/
 
@@ -198,11 +198,11 @@ static void ExportParsedData(const char *fileName, int format); // Export parsed
 //----------------------------------------------------------------------------------
 // Program main entry point
 //----------------------------------------------------------------------------------
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     if (argc > 1) ProcessCommandLine(argc, argv);
 
-    const char *raylibhPath = "../src/raylib.h\0";
+    const char *raylibhPath = "../../src/raylib.h\0";
     const char *raylibapiPath = "raylib_api.txt\0";
     const char *rlapiPath = "RLAPI\0";
     if (inFileName[0] == '\0') MemoryCopy(inFileName, raylibhPath, TextLength(raylibhPath) + 1);
@@ -260,7 +260,7 @@ int main(int argc, char* argv[])
     for (int i = 0; i < lineCount; i++)
     {
         int j = 0;
-        while ((lines[i][j] == ' ') || (lines[i][j] == '\t')) j++; // skip spaces and tabs in the begining
+        while ((lines[i][j] == ' ') || (lines[i][j] == '\t')) j++; // skip spaces and tabs in the beginning
         // Read define line
         if (IsTextEqual(lines[i]+j, "#define ", 8))
         {
@@ -385,7 +385,7 @@ int main(int argc, char* argv[])
         char *linePtr = lines[defineLines[i]];
         int j = 0;
 
-        while ((linePtr[j] == ' ') || (linePtr[j] == '\t')) j++; // Skip spaces and tabs in the begining
+        while ((linePtr[j] == ' ') || (linePtr[j] == '\t')) j++; // Skip spaces and tabs in the beginning
         j += 8;                                                  // Skip "#define "
         while ((linePtr[j] == ' ') || (linePtr[j] == '\t')) j++; // Skip spaces and tabs after "#define "
 
@@ -721,7 +721,8 @@ int main(int argc, char* argv[])
                             char v = structs[i].fieldType[originalIndex][k];
                             if ((v == '*') || (v == ' ') || (v == ','))
                             {
-                                if (nameEnd != -1) {
+                                if (nameEnd != -1)
+                                {
                                     // Don't copy to last additional field
                                     if (fieldsRemaining != additionalFields)
                                     {
@@ -1011,7 +1012,8 @@ int main(int argc, char* argv[])
                     ((linePtr[c - 4] == 'v') &&
                      (linePtr[c - 3] == 'o') &&
                      (linePtr[c - 2] == 'i') &&
-                     (linePtr[c - 1] == 'd'))) {
+                     (linePtr[c - 1] == 'd')))
+                {
                   break;
                 }
 
@@ -1084,7 +1086,7 @@ static void ShowCommandLineInfo(void)
     printf("//                                                                              //\n");
     printf("// more info and bugs-report: github.com/raysan5/raylib/tools/rlparser          //\n");
     printf("//                                                                              //\n");
-    printf("// Copyright (c) 2021-2025 Ramon Santamaria (@raysan5)                          //\n");
+    printf("// Copyright (c) 2021-2026 Ramon Santamaria (@raysan5)                          //\n");
     printf("//                                                                              //\n");
     printf("//////////////////////////////////////////////////////////////////////////////////\n\n");
 
@@ -1152,7 +1154,7 @@ static void ProcessCommandLine(int argc, char *argv[])
                 else if (IsTextEqual(argv[i + 1], "JSON\0", 5)) outputFormat = JSON;
                 else if (IsTextEqual(argv[i + 1], "XML\0", 4)) outputFormat = XML;
                 else if (IsTextEqual(argv[i + 1], "LUA\0", 4)) outputFormat = LUA;
-                else if (IsTextEqual(argv[i + 1], "CODE\0", 4)) outputFormat = CODE;
+                else if (IsTextEqual(argv[i + 1], "CODE\0", 5)) outputFormat = CODE;
             }
             else printf("WARNING: No format parameters provided\n");
         }
