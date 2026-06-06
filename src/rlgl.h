@@ -361,6 +361,12 @@
 #ifndef RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA
     #define RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA   11
 #endif
+#ifndef RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA_2
+    #define RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA_2   12
+#endif
+#ifndef RL_DEFAULT_SHADER_ATTRIB_LOCATION_COLOR_2
+    #define RL_DEFAULT_SHADER_ATTRIB_LOCATION_COLOR_2       13
+#endif
 
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
@@ -399,8 +405,10 @@ typedef struct rlVertexBuffer {
 #endif
     unsigned int *sdfShapes;    // Vertex sdf shape (1 components per vertex) (shader-location = 10)
     float* userData;            // Vertex user data (4 float per vertex) (shader-location = 11)
+    float* userData2;           // Vertex user data (4 float per vertex) (shader-location = 12)
+    unsigned char *colors2;      // Vertex colors (RGBA - 4 components per vertex) (shader-location = 13)
     unsigned int vaoId;         // OpenGL Vertex Array Object id
-    unsigned int vboId[7];      // OpenGL Vertex Buffer Objects id
+    unsigned int vboId[9];      // OpenGL Vertex Buffer Objects id
 } rlVertexBuffer;
 
 // Draw call type
@@ -537,7 +545,9 @@ typedef enum {
     RL_SHADER_LOC_MAP_BRDF,              // Shader location: sampler2d texture: brdf
     // Custom
     RL_SHADER_LOC_SDF_SHAPE,
-    RL_SHADER_LOC_USER_DATA
+    RL_SHADER_LOC_USER_DATA,
+    RL_SHADER_LOC_USER_DATA_2,
+    RL_SHADER_LOC_VERTEX_COLOR_2
 } rlShaderLocationIndex;
 
 #define RL_SHADER_LOC_MAP_DIFFUSE       RL_SHADER_LOC_MAP_ALBEDO
@@ -636,9 +646,13 @@ RLAPI void rlTexCoord2f(float x, float y);              // Define one vertex (te
 RLAPI void rlNormal3f(float x, float y, float z);       // Define one vertex (normal) - 3 float
 RLAPI void rlSdfShape(unsigned int shape);
 RLAPI void rlUserData(float value0, float value1, float value2, float value3);
+RLAPI void rlUserData2(float value0, float value1, float value2, float value3);
 RLAPI void rlColor4ub(unsigned char r, unsigned char g, unsigned char b, unsigned char a); // Define one vertex (color) - 4 byte
 RLAPI void rlColor3f(float x, float y, float z);        // Define one vertex (color) - 3 float
 RLAPI void rlColor4f(float x, float y, float z, float w); // Define one vertex (color) - 4 float
+RLAPI void rlColor2_4ub(unsigned char r, unsigned char g, unsigned char b, unsigned char a); // Define one vertex (color) - 4 byte
+RLAPI void rlColor2_3f(float x, float y, float z); // Define one vertex (color) - 3 float
+RLAPI void rlColor2_4f(float x, float y, float z, float w); // Define one vertex (color) - 4 float
 
 //------------------------------------------------------------------------------------
 // Functions Declaration - OpenGL style functions (common to 1.1, 3.3+, ES2)
@@ -1068,7 +1082,12 @@ RLAPI void rlLoadDrawQuad(void);     // Load and draw a quad
 #ifndef RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA
     #define RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA    "userData"          // Bound by default to shader location: RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA
 #endif
-
+#ifndef RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA_2
+    #define RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA_2    "userData2"          // Bound by default to shader location: RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA_2
+#endif
+#ifndef RL_DEFAULT_SHADER_ATTRIB_NAME_COLOR_2
+    #define RL_DEFAULT_SHADER_ATTRIB_NAME_COLOR_2       "vertexColor2"       // Bound by default to shader location: RL_DEFAULT_SHADER_ATTRIB_LOCATION_COLOR_2
+#endif
 
 //----------------------------------------------------------------------------------
 // Module Types and Structures Definition
@@ -1090,6 +1109,8 @@ typedef struct rlglData {
         unsigned char colorr, colorg, colorb, colora;   // Current active color (added on glVertex*())
         unsigned int sdfShape;
         float userData0, userData1, userData2, userData3;
+        float userData0_2, userData1_2, userData2_2, userData3_2;
+        unsigned char color2r, color2g, color2b, color2a;   // Current active color (added on glVertex*())
 
         int currentMatrixMode;              // Current matrix mode
         Matrix *currentMatrix;              // Current matrix pointer
@@ -1600,11 +1621,24 @@ void rlVertex3f(float x, float y, float z)
     // Add current sdf shape
     RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].sdfShapes[RLGL.State.vertexCounter] = RLGL.State.sdfShape;
 
-    // Add current sdf shape
+    // Add current user data
     RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData[4*RLGL.State.vertexCounter] = RLGL.State.userData0;
     RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData[4*RLGL.State.vertexCounter + 1] = RLGL.State.userData1;
     RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData[4*RLGL.State.vertexCounter + 2] = RLGL.State.userData2;
     RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData[4*RLGL.State.vertexCounter + 3] = RLGL.State.userData3;
+
+    // Add current user data 2
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData2[4*RLGL.State.vertexCounter] = RLGL.State.userData0_2;
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData2[4*RLGL.State.vertexCounter + 1] = RLGL.State.userData1_2;
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData2[4*RLGL.State.vertexCounter + 2] = RLGL.State.userData2_2;
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].userData2[4*RLGL.State.vertexCounter + 3] = RLGL.State.userData3_2;
+
+     // Add current color 2
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].colors2[4*RLGL.State.vertexCounter] = RLGL.State.color2r;
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].colors2[4*RLGL.State.vertexCounter + 1] = RLGL.State.color2g;
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].colors2[4*RLGL.State.vertexCounter + 2] = RLGL.State.color2b;
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].colors2[4*RLGL.State.vertexCounter + 3] = RLGL.State.color2a;
+
 
     RLGL.State.vertexCounter++;
     RLGL.currentBatch->draws[RLGL.currentBatch->drawCounter - 1].vertexCount++;
@@ -1675,6 +1709,14 @@ void rlUserData(float value0, float value1, float value2, float value3)
     RLGL.State.userData3 = value3;
 }
 
+void rlUserData2(float value0, float value1, float value2, float value3)
+{
+    RLGL.State.userData0_2 = value0;
+    RLGL.State.userData1_2 = value1;
+    RLGL.State.userData2_2 = value2;
+    RLGL.State.userData3_2 = value3;
+}
+
 // Define one vertex (color)
 void rlColor4ub(unsigned char x, unsigned char y, unsigned char z, unsigned char w)
 {
@@ -1694,6 +1736,27 @@ void rlColor4f(float r, float g, float b, float a)
 void rlColor3f(float x, float y, float z)
 {
     rlColor4ub((unsigned char)(x*255), (unsigned char)(y*255), (unsigned char)(z*255), 255);
+}
+
+// Define one vertex (color)
+void rlColor2_4ub(unsigned char x, unsigned char y, unsigned char z, unsigned char w)
+{
+    RLGL.State.color2r = x;
+    RLGL.State.color2g = y;
+    RLGL.State.color2b = z;
+    RLGL.State.color2a = w;
+}
+
+// Define one vertex (color)
+void rlColor2_4f(float r, float g, float b, float a)
+{
+    rlColor2_4ub((unsigned char)(r * 255), (unsigned char)(g * 255), (unsigned char)(b * 255), (unsigned char)(a * 255));
+}
+
+// Define one vertex (color)
+void rlColor2_3f(float x, float y, float z)
+{
+    rlColor2_4ub((unsigned char)(x * 255), (unsigned char)(y * 255), (unsigned char)(z * 255), 255);
 }
 
 #endif
@@ -2363,13 +2426,17 @@ void rlglInit(int width, int height)
     // Simulate attributes
     RLGL.State.currentShaderLocs[RL_SHADER_LOC_SDF_SHAPE] = RL_DEFAULT_SHADER_ATTRIB_LOCATION_SDF_SHAPE;
     RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA] = RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA;
+    RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA_2] = RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA_2;
+    RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_COLOR_2] = RL_DEFAULT_SHADER_ATTRIB_LOCATION_COLOR_2;
 
     RLGL.defaultBatch = rlLoadRenderBatch(RL_DEFAULT_BATCH_BUFFERS, RL_DEFAULT_BATCH_BUFFER_ELEMENTS);
 
     RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_NORMAL] = -1;
     RLGL.State.currentShaderLocs[RL_SHADER_LOC_SDF_SHAPE] = -1;
     RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA] = -1;
-    
+    RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA_2] = -1;
+    RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_COLOR_2] = -1;
+
     RLGL.currentBatch = &RLGL.defaultBatch;
 
     // Init stack matrices (emulating OpenGL 1.1)
@@ -2876,6 +2943,8 @@ rlRenderBatch rlLoadRenderBatch(int numBuffers, int bufferElements)
 #endif
         batch.vertexBuffer[i].sdfShapes = (unsigned int *)RL_CALLOC(bufferElements*4, sizeof(unsigned int));     // 1 unsigned int by vertex, 4 vertex by quad
         batch.vertexBuffer[i].userData = (float *)RL_CALLOC(bufferElements*4*4, sizeof(float));   // 4 float by vertex, 4 floats by quad
+        batch.vertexBuffer[i].userData2 = (float *)RL_CALLOC(bufferElements*4*4, sizeof(float));   // 4 float by vertex, 4 floats by quad
+        batch.vertexBuffer[i].colors2 = (unsigned char *)RL_CALLOC(bufferElements*4*4, sizeof(unsigned char));   // 4 float by color, 4 colors by quad
 
         for (int j = 0; j < (3*4*bufferElements); j++) batch.vertexBuffer[i].vertices[j] = 0.0f;
         for (int j = 0; j < (2*4*bufferElements); j++) batch.vertexBuffer[i].texcoords[j] = 0.0f;
@@ -2883,6 +2952,8 @@ rlRenderBatch rlLoadRenderBatch(int numBuffers, int bufferElements)
         for (int j = 0; j < (4*4*bufferElements); j++) batch.vertexBuffer[i].colors[j] = 0;
         for (int j = 0; j < (4*bufferElements); j++) batch.vertexBuffer[i].sdfShapes[j] = 0;
         for (int j = 0; j < (4*4*bufferElements); j++) batch.vertexBuffer[i].userData[j] = 0;
+        for (int j = 0; j < (4*4*bufferElements); j++) batch.vertexBuffer[i].userData2[j] = 0;
+        for (int j = 0; j < (4*4*bufferElements); j++) batch.vertexBuffer[i].colors2[j] = 0;
 
         int k = 0;
 
@@ -2968,6 +3039,21 @@ rlRenderBatch rlLoadRenderBatch(int numBuffers, int bufferElements)
         glBufferData(GL_ARRAY_BUFFER, bufferElements*4*4*sizeof(float), batch.vertexBuffer[i].userData, GL_DYNAMIC_DRAW);
         glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA]);
         glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA], 4, GL_FLOAT, 0, 0, 0);
+
+        // User Data buffer (shader-location = 12)
+        glGenBuffers(1, &batch.vertexBuffer[i].vboId[7]);
+        glBindBuffer(GL_ARRAY_BUFFER, batch.vertexBuffer[i].vboId[7]);
+        glBufferData(GL_ARRAY_BUFFER, bufferElements*4*4*sizeof(float), batch.vertexBuffer[i].userData2, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA_2]);
+        glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA_2], 4, GL_FLOAT, 0, 0, 0);
+    
+        // Vertex color 2 buffer (shader-location = 13)
+        glGenBuffers(1, &batch.vertexBuffer[i].vboId[8]);
+        glBindBuffer(GL_ARRAY_BUFFER, batch.vertexBuffer[i].vboId[8]);
+        glBufferData(GL_ARRAY_BUFFER, bufferElements*4*4*sizeof(unsigned char), batch.vertexBuffer[i].colors2, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_COLOR_2]);
+        glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_COLOR_2], 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, 0);
+
     }
 
     TRACELOG(RL_LOG_INFO, "RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)");
@@ -3022,6 +3108,8 @@ void rlUnloadRenderBatch(rlRenderBatch batch)
             glDisableVertexAttribArray(RL_DEFAULT_SHADER_ATTRIB_LOCATION_COLOR);
             glDisableVertexAttribArray(RL_DEFAULT_SHADER_ATTRIB_LOCATION_SDF_SHAPE);
             glDisableVertexAttribArray(RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA);
+            glDisableVertexAttribArray(RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA_2);
+            glDisableVertexAttribArray(RL_DEFAULT_SHADER_ATTRIB_LOCATION_COLOR_2);
             glBindVertexArray(0);
         }
 
@@ -3033,6 +3121,8 @@ void rlUnloadRenderBatch(rlRenderBatch batch)
         glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[4]);
         glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[5]);
         glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[6]);
+        glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[7]);
+        glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[8]);
 
         // Delete VAOs from GPU (VRAM)
         if (RLGL.ExtSupported.vao) glDeleteVertexArrays(1, &batch.vertexBuffer[i].vaoId);
@@ -3045,6 +3135,8 @@ void rlUnloadRenderBatch(rlRenderBatch batch)
         RL_FREE(batch.vertexBuffer[i].indices);
         RL_FREE(batch.vertexBuffer[i].sdfShapes);
         RL_FREE(batch.vertexBuffer[i].userData);
+        RL_FREE(batch.vertexBuffer[i].userData2);
+        RL_FREE(batch.vertexBuffer[i].colors2);
     }
 
     // Unload arrays
@@ -3097,6 +3189,14 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
         glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[6]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, RLGL.State.vertexCounter*4*sizeof(float), batch->vertexBuffer[batch->currentBuffer].userData);
 
+         // User Data 2 buffer
+        glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[7]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, RLGL.State.vertexCounter*4*sizeof(float), batch->vertexBuffer[batch->currentBuffer].userData2);
+
+        // Colors 2 buffer
+        glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[8]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, RLGL.State.vertexCounter*4*sizeof(unsigned char), batch->vertexBuffer[batch->currentBuffer].colors2);
+       
         // NOTE: glMapBuffer() causes sync issue
         // If GPU is working with this buffer, glMapBuffer() will wait(stall) until GPU to finish its job
         // To avoid waiting (idle), glBufferData() can bee called first with NULL pointer before glMapBuffer()
@@ -3202,6 +3302,16 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
                 glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[6]);
                 glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA], 4, GL_FLOAT, 0, 0, 0);
                 glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA]);
+
+                 // Bind vertex attrib: user data 2 (shader-location = 12)
+                glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[7]);
+                glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA_2], 4, GL_FLOAT, 0, 0, 0);
+                glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_USER_DATA_2]);
+
+                // Bind vertex attrib: color 2 (shader-location = 13)
+                glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[8]);
+                glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_COLOR_2], 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, 0);
+                glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_COLOR_2]);
 
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[4]);
             }
@@ -4459,6 +4569,8 @@ unsigned int rlLoadShaderProgramEx(unsigned int vsId, unsigned int fsId)
     glBindAttribLocation(programId, RL_DEFAULT_SHADER_ATTRIB_LOCATION_BONEWEIGHTS, RL_DEFAULT_SHADER_ATTRIB_NAME_BONEWEIGHTS);
     glBindAttribLocation(programId, RL_DEFAULT_SHADER_ATTRIB_LOCATION_SDF_SHAPE, RL_DEFAULT_SHADER_ATTRIB_NAME_SDF_SHAPE);
     glBindAttribLocation(programId, RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA, RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA);
+    glBindAttribLocation(programId, RL_DEFAULT_SHADER_ATTRIB_LOCATION_USER_DATA_2, RL_DEFAULT_SHADER_ATTRIB_NAME_USER_DATA_2);
+    glBindAttribLocation(programId, RL_DEFAULT_SHADER_ATTRIB_LOCATION_COLOR_2, RL_DEFAULT_SHADER_ATTRIB_NAME_COLOR_2);
 
     glLinkProgram(programId);
 
