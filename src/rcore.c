@@ -4105,6 +4105,9 @@ int GetMouseXInternal(void)
 {
     int mouseX = (int)((CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x) * CORE.Input.Mouse.scale.x);
 
+    if(mouseX < 0)
+        return mouseX;
+
     if (CORE.Input.Mouse.invertX)
         mouseX = CORE.Window.screen.width - mouseX;
 
@@ -4114,6 +4117,9 @@ int GetMouseXInternal(void)
 int GetMouseYInternal(void)
 {
     int mouseY = (int)((CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y) * CORE.Input.Mouse.scale.y);
+
+    if (mouseY < 0)
+        return mouseY;
 
     if (CORE.Input.Mouse.invertY)
         mouseY = CORE.Window.screen.height - mouseY;
@@ -4128,9 +4134,6 @@ int GetMouseX(void)
         return GetMouseYInternal();
     else
         return GetMouseXInternal();
-    int mouseX = (int)((CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x)*CORE.Input.Mouse.scale.x);
-
-    return mouseX;
 }
 
 // Get mouse position Y
@@ -4140,9 +4143,6 @@ int GetMouseY(void)
         return GetMouseXInternal();
     else
         return GetMouseYInternal();
-    int mouseY = (int)((CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y)*CORE.Input.Mouse.scale.y);
-
-    return mouseY;
 }
 
 // Get mouse position XY
@@ -4225,6 +4225,9 @@ int GetTouchXInternal(int index)
 {
     int touchX = (int)CORE.Input.Touch.position[index].x;
 
+    if(touchX < 0)
+        return touchX;
+
     if (CORE.Input.Touch.invertX)
         touchX = CORE.Window.screen.width - touchX;
 
@@ -4234,6 +4237,9 @@ int GetTouchXInternal(int index)
 int GetTouchYInternal(int index)
 {
     int touchY = (int)CORE.Input.Touch.position[index].y;
+
+    if(touchY < 0)
+        return touchY;
 
     if (CORE.Input.Touch.invertY)
         touchY = CORE.Window.screen.height - touchY;
